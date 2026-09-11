@@ -74,7 +74,10 @@ void PlayerComponent::componentPostInitialize()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 PlayerComponent::~PlayerComponent()
 {
-  // m_mpv is owned by MpvVideoItem, don't access it here as it may be destroyed
+  if (m_mpv && m_mpv->mpv())
+  {
+    mpv_set_wakeup_callback(m_mpv->mpv(), nullptr, nullptr);
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -819,6 +822,13 @@ void PlayerComponent::stop()
   }
   QStringList args("stop");
   m_mpv->command( args);
+  QStringList clearArgs("playlist_clear");
+  m_mpv->command( clearArgs);
+
+  m_currentSubtitleStream.clear();
+  m_currentAudioStream.clear();
+  m_serverMediaInfo.clear();
+  m_mediaFrameRate = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
