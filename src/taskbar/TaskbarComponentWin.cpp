@@ -24,10 +24,11 @@ using ABI::Windows::Storage::Streams::IRandomAccessStreamReferenceStatics;
 /////////////////////////////////////////////////////////////////////////////////////////
 TaskbarComponentWin::~TaskbarComponentWin()
 {
-  if (m_initialized)
+  if (m_initialized && m_systemControls)
   {
     m_systemControls->remove_ButtonPressed(m_buttonPressedToken);
-    m_displayUpdater->ClearAll();
+    if (m_displayUpdater)
+      m_displayUpdater->ClearAll();
   }
 }
 
@@ -119,15 +120,19 @@ void TaskbarComponentWin::stopped()
 void TaskbarComponentWin::setControlsVisible(bool value)
 {
   if (m_button) {
-    m_button->progress()->setVisible(value);
+    if (m_button->progress())
+      m_button->progress()->setVisible(value);
 
-    for (auto& button : m_toolbar->buttons())
-    {
-      button->setVisible(value);
+    if (m_toolbar) {
+      for (auto& button : m_toolbar->buttons())
+      {
+        if (button)
+          button->setVisible(value);
+      }
     }
   }
 
-  if (m_initialized)
+  if (m_initialized && m_systemControls)
   {
     m_systemControls->put_PlaybackStatus(MediaPlaybackStatus::MediaPlaybackStatus_Stopped);
     m_systemControls->put_IsEnabled(value);
@@ -137,7 +142,7 @@ void TaskbarComponentWin::setControlsVisible(bool value)
 /////////////////////////////////////////////////////////////////////////////////////////
 void TaskbarComponentWin::setProgress(quint64 value)
 {
-  if (m_button) {
+  if (m_button && m_button->progress()) {
     qint64 duration = PlayerComponent::Get().getDuration();
     int progress = 0;
     if (duration != 0) {
@@ -151,21 +156,22 @@ void TaskbarComponentWin::setProgress(quint64 value)
 void TaskbarComponentWin::setPaused(bool value)
 {
   if (m_button) {
-    if (value)
-    {
-      // m_pause->setToolTip("Resume");
-      m_pause->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPlay));
-    }
-    else
-    {
-      // m_pause->setToolTip("Pause");
-      m_pause->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPause));
+    if (m_pause) {
+      if (value)
+      {
+        m_pause->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPlay));
+      }
+      else
+      {
+        m_pause->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPause));
+      }
     }
 
-    m_button->progress()->setPaused(value);
+    if (m_button->progress())
+      m_button->progress()->setPaused(value);
   }
 
-  if (m_initialized)
+  if (m_initialized && m_systemControls)
   {
     auto status = value ? MediaPlaybackStatus::MediaPlaybackStatus_Paused : MediaPlaybackStatus::MediaPlaybackStatus_Playing;
     m_systemControls->put_PlaybackStatus(status);
@@ -436,47 +442,42 @@ HRESULT TaskbarComponentWin::buttonPressed(ISystemMediaTransportControls* sender
     return hr;
   }
 
+  QString action;
   switch (button)
   {
     case SystemMediaTransportControlsButton::SystemMediaTransportControlsButton_Play:
-      InputComponent::Get().sendAction("play_pause");
-      qDebug() << "Received play button press";
-      break;
     case SystemMediaTransportControlsButton::SystemMediaTransportControlsButton_Pause:
-      InputComponent::Get().sendAction("play_pause");
-      qDebug() << "Received pause button press";
+      action = "play_pause";
       break;
     case SystemMediaTransportControlsButton::SystemMediaTransportControlsButton_Next:
-      InputComponent::Get().sendAction("next");
-      qDebug() << "Received next button press";
+      action = "next";
       break;
     case SystemMediaTransportControlsButton::SystemMediaTransportControlsButton_Previous:
-      InputComponent::Get().sendAction("previous");
-      qDebug() << "Received previous button press";
+      action = "previous";
       break;
     case SystemMediaTransportControlsButton::SystemMediaTransportControlsButton_Stop:
-      InputComponent::Get().sendAction("stop");
-      qDebug() << "Received stop button press";
+      action = "stop";
       break;
     case SystemMediaTransportControlsButton::SystemMediaTransportControlsButton_FastForward:
-      InputComponent::Get().sendAction("seek_forward");
-      qDebug() << "Received seek_forward button press";
+      action = "seek_forward";
       break;
     case SystemMediaTransportControlsButton::SystemMediaTransportControlsButton_Rewind:
-      InputComponent::Get().sendAction("seek_backward");
-      qDebug() << "Received seek_backward button press";
+      action = "seek_backward";
       break;
     case SystemMediaTransportControlsButton::SystemMediaTransportControlsButton_ChannelUp:
-      InputComponent::Get().sendAction("channelup");
-      qDebug() << "Received channelup button press";
+      action = "channelup";
       break;
     case SystemMediaTransportControlsButton::SystemMediaTransportControlsButton_ChannelDown:
-      InputComponent::Get().sendAction("channeldown");
-      qDebug() << "Received channeldown button press";
+      action = "channeldown";
       break;
     case SystemMediaTransportControlsButton::SystemMediaTransportControlsButton_Record:
       qDebug() << "Received unsupported button press";
-      break;
+      return S_OK;
+  }
+
+  if (!action.isEmpty()) {
+    QMetaObject::invokeMethod(&InputComponent::Get(), "sendAction", Qt::QueuedConnection, Q_ARG(QString, action));
+    qDebug() << "Dispatched" << action << "button press to main thread";
   }
 
   return S_OK;
