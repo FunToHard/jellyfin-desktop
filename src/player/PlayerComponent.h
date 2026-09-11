@@ -242,6 +242,7 @@ private:
   void checkCurrentAudioDevice(const QSet<QString>& old_devs, const QSet<QString>& new_devs);
   void appendAudioFormat(QTextStream& info, const QString& property) const;
   void updateVideoAspectSettings();
+  void updateAc3Filter();
   QVariantList findStreamsForURL(const QString &url);
   void reselectStream(const QVariant &streamSelection, MediaType target);
 
@@ -266,6 +267,7 @@ private:
   QSet<QString> m_audioDevices;
   bool m_streamSwitchImminent;
   bool m_doAc3Transcoding;
+  bool m_ac3FilterActive;
   QStringList m_passthroughCodecs;
   QVariantMap m_serverMediaInfo;
   QVariant m_currentSubtitleStream;

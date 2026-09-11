@@ -48,7 +48,7 @@ PlayerComponent::PlayerComponent(QObject* parent)
   m_lastPositionUpdate(0.0), m_playbackAudioDelay(0),
   m_window(nullptr), m_mediaFrameRate(0),
   m_restoreDisplayTimer(this), m_reloadAudioTimer(this),
-  m_streamSwitchImminent(false), m_doAc3Transcoding(false),
+  m_streamSwitchImminent(false), m_doAc3Transcoding(false), m_ac3FilterActive(false),
   m_videoRectangle(-1, 0, 0, 0),
   m_albumArtProvider(new AlbumArtProvider(this))
 {
@@ -189,6 +189,7 @@ void PlayerComponent::initializeMpv()
   mpv_observe_property(m_mpv->mpv(), 0, "duration", MPV_FORMAT_DOUBLE);
   mpv_observe_property(m_mpv->mpv(), 0, "audio-device-list", MPV_FORMAT_NODE);
   mpv_observe_property(m_mpv->mpv(), 0, "video-dec-params", MPV_FORMAT_NODE);
+  mpv_observe_property(m_mpv->mpv(), 0, "audio-params", MPV_FORMAT_NODE);
   mpv_observe_property(m_mpv->mpv(), 0, "demuxer-cache-state", MPV_FORMAT_NODE);
 
   // Setup a hook with the ID 1, which is run during the file is loaded.
@@ -597,6 +598,10 @@ void PlayerComponent::handleMpvEvent(mpv_event *event)
         // dependent on the aspect ratio.
         updateVideoAspectSettings();
       }
+      else if (strcmp(prop->name, "audio-params") == 0)
+      {
+        updateAc3Filter();
+      }
       break;
     }
     case MPV_EVENT_LOG_MESSAGE:
@@ -824,6 +829,12 @@ void PlayerComponent::stop()
   m_mpv->command( args);
   QStringList clearArgs("playlist_clear");
   m_mpv->command( clearArgs);
+
+  if (m_ac3FilterActive)
+  {
+    m_mpv->command(QStringList() << "af" << "remove" << "@ac3");
+    m_ac3FilterActive = false;
+  }
 
   m_currentSubtitleStream.clear();
   m_currentAudioStream.clear();
@@ -1294,18 +1305,10 @@ void PlayerComponent::setAudioConfiguration()
   // here for now. We might need to add support for DTS transcoding
   // if we see user requests for it.
   //
-  bool wasAc3Transcoding = m_doAc3Transcoding;
   m_doAc3Transcoding =
   (deviceType == AUDIO_DEVICE_TYPE_SPDIF &&
    SettingsComponent::Get().value(SETTINGS_SECTION_AUDIO, "passthrough.ac3").toBool());
-  if (m_doAc3Transcoding && !wasAc3Transcoding)
-  {
-    m_mpv->command( QStringList() << "af" << "add" << "@ac3:lavcac3enc");
-  }
-  else if (!m_doAc3Transcoding && wasAc3Transcoding)
-  {
-    m_mpv->command( QStringList() << "af" << "remove" << "@ac3");
-  }
+  updateAc3Filter();
 
   QVariant device = SettingsComponent::Get().value(SETTINGS_SECTION_AUDIO, "device");
 
@@ -1318,6 +1321,46 @@ void PlayerComponent::setAudioConfiguration()
                                                                    passthroughCodecs.isEmpty() ? "none" : passthroughCodecs,
                                                                    m_doAc3Transcoding ? "yes" : "no");
   qInfo() << qPrintable(audioConfig);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void PlayerComponent::updateAc3Filter()
+{
+  if (!m_mpv)
+    return;
+
+  bool needAc3 = false;
+  if (m_doAc3Transcoding)
+  {
+    auto params = m_mpv->getProperty("audio-params").toMap();
+    int channelCount = params.value("channel-count").toInt();
+    if (channelCount <= 0)
+    {
+      QString layout = params.value("channels").toString();
+      if (layout.contains("5.1") || layout.contains("7.1") || layout.contains("6ch") ||
+          layout.contains("8ch") || layout.contains("quad") || layout.contains("surround"))
+      {
+        channelCount = 6;
+      }
+      else if (layout.contains("stereo") || layout == "2.0")
+      {
+        channelCount = 2;
+      }
+    }
+    if (channelCount >= 3)
+      needAc3 = true;
+  }
+
+  if (needAc3 && !m_ac3FilterActive)
+  {
+    m_mpv->command(QStringList() << "af" << "add" << "@ac3:lavcac3enc=tospdif=yes:minch=3");
+    m_ac3FilterActive = true;
+  }
+  else if (!needAc3 && m_ac3FilterActive)
+  {
+    m_mpv->command(QStringList() << "af" << "remove" << "@ac3");
+    m_ac3FilterActive = false;
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
