@@ -24,12 +24,20 @@ using ABI::Windows::Storage::Streams::IRandomAccessStreamReferenceStatics;
 /////////////////////////////////////////////////////////////////////////////////////////
 TaskbarComponentWin::~TaskbarComponentWin()
 {
+  componentShutdown();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+void TaskbarComponentWin::componentShutdown()
+{
   if (m_initialized && m_systemControls)
   {
     m_systemControls->remove_ButtonPressed(m_buttonPressedToken);
     if (m_displayUpdater)
       m_displayUpdater->ClearAll();
   }
+  m_initialized = false;
+  TaskbarComponent::componentShutdown();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

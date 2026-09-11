@@ -20,6 +20,9 @@ public:
 
   // executed after ALL components are initialized
   virtual void componentPostInitialize() { }
+
+  // executed before application shutdown
+  virtual void componentShutdown() { }
 };
 
 class ComponentManager : public QObject
@@ -29,6 +32,7 @@ class ComponentManager : public QObject
 
 public:
   void initialize();
+  void shutdown();
   inline QQmlPropertyMap &getQmlPropertyMap() { return m_qmlProperyMap; }
   void setWebChannel(QWebChannel* webChannel);
 
@@ -37,6 +41,7 @@ private:
   void registerComponent(ComponentBase* comp);
 
   QMap<QString, ComponentBase*> m_components;
+  QList<ComponentBase*> m_registeredOrder;
   QQmlPropertyMap m_qmlProperyMap;
 };
 

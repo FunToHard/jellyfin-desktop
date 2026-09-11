@@ -22,6 +22,7 @@ public:
       m_buttonPressedToken()
   {}
   ~TaskbarComponentWin() override;
+  void componentShutdown() override;
   virtual void setWindow(QQuickWindow* window) override;
 
 private:

@@ -28,6 +28,7 @@ public:
   bool componentExport() override { return true; }
   const char* componentName() override { return "power"; }
   void componentPostInitialize() override;
+  void componentShutdown() override { setScreensaverEnabled(true); }
 
 public Q_SLOTS:
   bool checkCap(PowerCapabilities capability);

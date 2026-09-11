@@ -30,6 +30,7 @@ public:
   bool componentExport() override { return true; }
   bool componentInitialize() override;
   void componentPostInitialize() override;
+  void componentShutdown() override;
   
   explicit PlayerComponent(QObject* parent = nullptr);
   ~PlayerComponent() override;

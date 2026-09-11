@@ -18,6 +18,7 @@ public:
   bool componentExport() override { return true; }
   bool componentInitialize() override;
   void componentPostInitialize() override;
+  void componentShutdown() override;
 
   inline DisplayManager* getDisplayManager() { return m_displayManager; }
   int getApplicationDisplay(bool silent = false);

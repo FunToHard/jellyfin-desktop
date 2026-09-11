@@ -583,6 +583,8 @@ int main(int argc, char *argv[])
     // run our application
     int ret = app.exec();
 
+    ComponentManager::Get().shutdown();
+
     delete uniqueApp;
     Globals::EngineDestroy();
 

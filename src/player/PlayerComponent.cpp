@@ -74,6 +74,13 @@ void PlayerComponent::componentPostInitialize()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 PlayerComponent::~PlayerComponent()
 {
+  componentShutdown();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void PlayerComponent::componentShutdown()
+{
+  stop();
   if (m_mpv && m_mpv->mpv())
   {
     mpv_set_wakeup_callback(m_mpv->mpv(), nullptr, nullptr);

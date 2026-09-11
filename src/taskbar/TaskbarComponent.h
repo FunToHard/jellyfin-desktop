@@ -17,6 +17,7 @@ public:
   bool componentExport() override { return true; }
   bool componentInitialize() override { return true; }
   void componentPostInitialize() override {}
+  void componentShutdown() override { m_window = nullptr; }
 
   virtual void setWindow(QQuickWindow* window);
 

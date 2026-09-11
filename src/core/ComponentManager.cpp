@@ -1,4 +1,5 @@
 #include <QObject>
+#include <QCoreApplication>
 #include <QtQml>
 #include <qqmlwebchannel.h>
 #include <QDebug>
@@ -39,6 +40,7 @@ void ComponentManager::registerComponent(ComponentBase* comp)
   {
     qInfo() << "Component:" << comp->componentName() << "inited";
     m_components[comp->componentName()] = comp;
+    m_registeredOrder.append(comp);
 
     // define component as property for qml
     m_qmlProperyMap.insert(comp->componentName(), QVariant::fromValue(comp));
@@ -73,6 +75,11 @@ void ComponentManager::initialize()
 
   for(ComponentBase* component : m_components.values())
     component->componentPostInitialize();
+
+  if (qApp)
+  {
+    connect(qApp, &QCoreApplication::aboutToQuit, this, &ComponentManager::shutdown);
+  }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -86,4 +93,23 @@ void ComponentManager::setWebChannel(QWebChannel* webChannel)
       webChannel->registerObject(comp->componentName(), comp);
     }
   }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+void ComponentManager::shutdown()
+{
+  if (m_registeredOrder.isEmpty())
+    return;
+
+  qInfo() << "Shutting down components in reverse registration order...";
+  for (int i = m_registeredOrder.size() - 1; i >= 0; --i)
+  {
+    ComponentBase* comp = m_registeredOrder.at(i);
+    if (comp)
+    {
+      qInfo() << "Shutting down component:" << comp->componentName();
+      comp->componentShutdown();
+    }
+  }
+  m_registeredOrder.clear();
 }

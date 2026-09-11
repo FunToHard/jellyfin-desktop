@@ -29,6 +29,7 @@ public:
   bool componentExport() override { return true; }
   bool componentInitialize() override { return true; }
   void componentPostInitialize() override;
+  void componentShutdown() override;
 
   // Called from main.cpp after window created
   void initializeWindow(QQuickWindow* window);

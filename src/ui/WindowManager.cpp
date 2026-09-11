@@ -47,6 +47,26 @@ WindowManager::WindowManager(QObject* parent)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 WindowManager::~WindowManager()
 {
+  componentShutdown();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void WindowManager::componentShutdown()
+{
+  if (m_geometrySaveTimer)
+  {
+    if (m_geometrySaveTimer->isActive())
+    {
+      m_geometrySaveTimer->stop();
+      saveGeometry();
+    }
+  }
+  if (m_infoTimer)
+  {
+    m_infoTimer->stop();
+  }
+  m_window = nullptr;
+  m_webView = nullptr;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
