@@ -27,6 +27,7 @@ public:
   bool componentExport() override { return false; }
   bool componentInitialize() override;
   void componentPostInitialize() override;
+  void componentShutdown() override;
 
   bool canQuit() const { return false; }
   bool canRaise() const { return true; }

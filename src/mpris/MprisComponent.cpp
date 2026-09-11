@@ -14,8 +14,12 @@
 #include <QDBusMessage>
 #include <QDBusError>
 #include <QApplication>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QFileInfo>
+#include <QFile>
+#include <QUrl>
+#include <QStandardPaths>
 
 #define MPRIS_OBJECT_PATH "/org/mpris/MediaPlayer2"
 
@@ -42,11 +46,23 @@ MprisComponent::MprisComponent(QObject* parent)
 
 MprisComponent::~MprisComponent()
 {
+  componentShutdown();
   if (m_enabled)
   {
     disconnectPlayerSignals();
     QDBusConnection::sessionBus().unregisterService(m_serviceName);
     QDBusConnection::sessionBus().unregisterObject(MPRIS_OBJECT_PATH);
+  }
+}
+
+void MprisComponent::componentShutdown()
+{
+  if (!m_currentArtDataUri.isEmpty())
+  {
+    QUrl url(m_currentArtDataUri);
+    if (url.isLocalFile())
+      QFile::remove(url.toLocalFile());
+    m_currentArtDataUri.clear();
   }
 }
 
@@ -989,16 +1005,25 @@ QString MprisComponent::generateTrackId() const
 
 void MprisComponent::onAlbumArtReady(const QByteArray& imageData, const QString& mimeType)
 {
-  // Create data URI from the downloaded image
-  QString dataUri = QString("data:%1;base64,%2")
-                      .arg(mimeType)
-                      .arg(QString::fromLatin1(imageData.toBase64()));
+  QString ext = mimeType.contains("png") ? ".png" : ".jpg";
+  QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+  QString tempPath = tempDir + QString("/jellyfin-mpris-art-%1%2").arg(QCoreApplication::applicationPid()).arg(ext);
 
-  m_currentArtDataUri = dataUri;
-
-  if (!m_metadata.isEmpty())
+  QFile file(tempPath);
+  if (file.open(QIODevice::WriteOnly))
   {
-    m_metadata["mpris:artUrl"] = dataUri;
+    file.write(imageData);
+    file.close();
+    m_currentArtDataUri = QUrl::fromLocalFile(tempPath).toString();
+  }
+  else
+  {
+    m_currentArtDataUri.clear();
+  }
+
+  if (!m_metadata.isEmpty() && !m_currentArtDataUri.isEmpty())
+  {
+    m_metadata["mpris:artUrl"] = m_currentArtDataUri;
     emitPropertyChange("org.mpris.MediaPlayer2.Player", "Metadata", m_metadata);
   }
 }
