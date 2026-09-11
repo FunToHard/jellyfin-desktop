@@ -58,22 +58,37 @@ bool DisplayComponent::initializeDisplayManager()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool DisplayComponent::componentInitialize()
 {
-#if 0
-  m_displayManager = new DisplayManagerDummy(this);
-#elif defined(Q_OS_MAC)
+#if defined(Q_OS_MAC)
   m_displayManager = new DisplayManagerOSX(this);
 #elif defined(TARGET_RPI)
   m_displayManager = new DisplayManagerRPI(this);
 #elif defined(USE_X11XRANDR)
-  m_displayManager = new DisplayManagerX11(this);
+  if (QGuiApplication::platformName().startsWith("wayland", Qt::CaseInsensitive))
+  {
+    qInfo() << "Wayland session detected; using DisplayManagerDummy.";
+    m_displayManager = new DisplayManagerDummy(this);
+  }
+  else
+  {
+    m_displayManager = new DisplayManagerX11(this);
+  }
 #elif defined(Q_OS_WIN)
   m_displayManager = new DisplayManagerWin(this);
+#else
+  m_displayManager = new DisplayManagerDummy(this);
 #endif
 
-  if (initializeDisplayManager())
+  if (!initializeDisplayManager())
   {
-    auto* app = qobject_cast<QGuiApplication*>(QGuiApplication::instance());
+    qWarning() << "Primary display manager failed to initialize; falling back to DisplayManagerDummy.";
+    delete m_displayManager;
+    m_displayManager = new DisplayManagerDummy(this);
+    initializeDisplayManager();
+  }
 
+  auto* app = qobject_cast<QGuiApplication*>(QGuiApplication::instance());
+  if (app)
+  {
     connect(app, SIGNAL(screenAdded(QScreen*)), this, SLOT(monitorChange()));
     connect(app, SIGNAL(screenRemoved(QScreen*)), this,  SLOT(monitorChange()));
 
@@ -82,17 +97,15 @@ bool DisplayComponent::componentInitialize()
       connect(screen, SIGNAL(refreshRateChanged(qreal)), this, SLOT(monitorChange()));
       connect(screen, SIGNAL(geometryChanged(QRect)), this, SLOT(monitorChange()));
     }
-
-#ifdef TARGET_RPI
-    // The firmware doesn't always make the best decision. Hope we do better.
-    qInfo() << "Trying to switch to best display mode.";
-    switchToBestOverallVideoMode(0);
-#endif
-
-    return true;
   }
 
-  return false;
+#ifdef TARGET_RPI
+  // The firmware doesn't always make the best decision. Hope we do better.
+  qInfo() << "Trying to switch to best display mode.";
+  switchToBestOverallVideoMode(0);
+#endif
+
+  return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
