@@ -169,6 +169,14 @@ int DisplayManagerWin::getMainDisplay()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 DisplayManagerWin::~DisplayManagerWin()
 {
+  for (int displayId : m_displays.keys())
+  {
+    if (m_displayAdapters.contains(displayId))
+    {
+      ChangeDisplaySettingsExW((LPCWSTR)m_displayAdapters[displayId].utf16(), NULL, NULL, 0, NULL);
+    }
+  }
+  ChangeDisplaySettingsExW(NULL, NULL, NULL, 0, NULL);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
