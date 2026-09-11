@@ -30,24 +30,38 @@ bool InputSDLWorker::initialize()
   SDL_JoystickEventState(SDL_ENABLE);
 
   refreshJoystickList();
+  m_running = true;
 
   return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+void InputSDLWorker::closeJoysticks()
+{
+  for (SDL_Joystick* joystick : m_joysticks)
+  {
+    if (joystick)
+      SDL_JoystickClose(joystick);
+  }
+  m_joysticks.clear();
+  m_axisState.clear();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 void InputSDLWorker::close()
 {
+  m_running = false;
   if (SDL_WasInit(SDL_INIT_JOYSTICK))
   {
     qInfo() << "SDL is closing.";
 
-    // we need to close all the openned joysticks here and then exit the thread
-    for (int joyid = 0; joyid < m_joysticks.size(); joyid++)
-      SDL_JoystickClose(m_joysticks[joyid]);
-
     SDL_Event event;
     event.type = SDL_QUIT;
     SDL_PushEvent(&event);
+  }
+  else
+  {
+    closeJoysticks();
   }
 }
 
@@ -65,7 +79,7 @@ void InputSDLWorker::run()
 {
   QElapsedTimer polltimer;
 
-  while (true)
+  while (m_running)
   {
     SDL_Event event;
 
@@ -77,6 +91,7 @@ void InputSDLWorker::run()
       switch (event.type)
       {
         case SDL_QUIT:
+          closeJoysticks();
           SDL_Quit();
           return;
           break;
@@ -186,21 +201,16 @@ void InputSDLWorker::run()
     if (polltimer.elapsed() < SDL_POLL_TIME)
       QThread::msleep(SDL_POLL_TIME - polltimer.elapsed());
   }
+
+  closeJoysticks();
+  if (SDL_WasInit(SDL_INIT_JOYSTICK))
+    SDL_Quit();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 void InputSDLWorker::refreshJoystickList()
 {
-  // close all openned joysticks
-  SDLJoystickMapIterator it = m_joysticks.constBegin();
-  while (it != m_joysticks.constEnd())
-  {
-    if (SDL_JoystickGetAttached(m_joysticks[it.key()]))
-      SDL_JoystickClose(m_joysticks[it.key()]);
-    it++;
-  }
-
-  m_joysticks.clear();
+  closeJoysticks();
 
   // list all the joysticks and open them
   int numJoysticks = SDL_NumJoysticks();
@@ -241,9 +251,12 @@ InputSDL::~InputSDL()
   
   if (m_thread->isRunning())
   {
-    m_thread->exit(0);
+    m_thread->quit();
     m_thread->wait();
   }
+
+  delete m_sdlworker;
+  m_sdlworker = nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -262,5 +275,6 @@ bool InputSDL::initInput()
 //////////////////////////////////////////////////////////////////////////////////////////////////
 void InputSDL::close()
 {
-  QMetaObject::invokeMethod(m_sdlworker, "close", Qt::DirectConnection);
+  if (m_sdlworker)
+    QMetaObject::invokeMethod(m_sdlworker, "close", Qt::QueuedConnection);
 }

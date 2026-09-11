@@ -13,6 +13,7 @@
 #include <QElapsedTimer>
 #include <QByteArray>
 #include <SDL.h>
+#include <atomic>
 
 #include "input/InputComponent.h"
 
@@ -32,7 +33,7 @@ class InputSDLWorker : public QObject
   Q_OBJECT
 
 public:
-  explicit InputSDLWorker(QObject* parent) : QObject(parent) {}
+  explicit InputSDLWorker(QObject* parent) : QObject(parent), m_running(false) {}
 
 public slots:
   void run();
@@ -44,8 +45,10 @@ signals:
 
 private:
   void refreshJoystickList();
+  void closeJoysticks();
   QString nameForId(SDL_JoystickID id);
 
+  std::atomic<bool> m_running;
   SDLJoystickMap m_joysticks;
 
   // map axis to up = true or down = false
