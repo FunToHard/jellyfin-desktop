@@ -8,6 +8,7 @@ class PowerComponentMac : public PowerComponent
 {
 public:
   PowerComponentMac() : PowerComponent(nullptr), m_assertion(0) { }
+  virtual ~PowerComponentMac() { doEnableScreensaver(); }
   void doDisableScreensaver() override;
   void doEnableScreensaver() override;
 

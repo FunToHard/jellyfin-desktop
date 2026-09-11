@@ -22,6 +22,7 @@ public:
   explicit PowerComponent(QObject* parent = nullptr)
   : ComponentBase(parent)
     { }
+  virtual ~PowerComponent() { setScreensaverEnabled(true); }
 
   bool componentInitialize() override;
   bool componentExport() override { return true; }

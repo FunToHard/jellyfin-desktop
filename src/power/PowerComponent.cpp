@@ -2,6 +2,7 @@
 // Created by Tobias Hieta on 25/03/15.
 //
 #include "PowerComponent.h"
+#include <QGuiApplication>
 #include "input/InputComponent.h"
 #include "settings/SettingsComponent.h"
 #include "player/PlayerComponent.h"
@@ -71,6 +72,13 @@ void PowerComponent::componentPostInitialize()
           this, [this](const QString& state) { setScreensaverEnabled(state != "Playing"); });
   connect(&PlayerComponent::Get(), &PlayerComponent::playbackStopped,
           this, [this](bool) { setScreensaverEnabled(true); });
+
+  if (qApp)
+  {
+    connect(qApp, &QGuiApplication::aboutToQuit, this, [this]() {
+      setScreensaverEnabled(true);
+    });
+  }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

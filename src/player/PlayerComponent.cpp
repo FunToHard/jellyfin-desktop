@@ -840,6 +840,9 @@ void PlayerComponent::stop()
   m_currentAudioStream.clear();
   m_serverMediaInfo.clear();
   m_mediaFrameRate = 0;
+
+  emit playbackStateChanged("Stopped");
+  emit playbackStopped(false);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

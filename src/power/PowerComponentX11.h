@@ -12,6 +12,7 @@ class PowerComponentX11 : public PowerComponent
 
 public:
   PowerComponentX11();
+  virtual ~PowerComponentX11() { doEnableScreensaver(); }
 
 protected:
   virtual void doDisableScreensaver();

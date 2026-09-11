@@ -7,7 +7,7 @@ class PowerComponentDBus : public PowerComponent
 {
   public:
     PowerComponentDBus() : PowerComponent(0) {};
-    ~PowerComponentDBus() {};
+    virtual ~PowerComponentDBus() { doEnableScreensaver(); }
 
   public Q_SLOTS:
 

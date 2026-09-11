@@ -8,6 +8,7 @@ class PowerComponentWin : public PowerComponent
 {
 public:
   PowerComponentWin();
+  virtual ~PowerComponentWin() { doEnableScreensaver(); }
   virtual void doDisableScreensaver();
   virtual void doEnableScreensaver();
 
