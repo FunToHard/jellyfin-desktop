@@ -19,7 +19,10 @@ static QStringList desktopWhiteListedKeys = { "Media Play",
                                               "Media Previous",
                                               "Media Rewind",
                                               "Media FastForward",
-                                              "Back"};
+                                              "Back",
+                                              "Backspace",
+                                              "Esc",
+                                              "Escape"};
 
 // These just happen to be mostly the same.
 static QStringList win32BlackListedKeys = { "Media Play",
@@ -155,6 +158,12 @@ bool EventFilter::eventFilter(QObject* watched, QEvent* event)
     return true;
   }
 
+  if (event->type() == QEvent::FocusOut || event->type() == QEvent::WindowDeactivate)
+  {
+    m_currentKeyDown = false;
+    return QObject::eventFilter(watched, event);
+  }
+
   if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease)
   {
     // In konvergo we intercept all keyboard events and translate them
@@ -196,7 +205,7 @@ bool EventFilter::eventFilter(QObject* watched, QEvent* event)
     else
       m_currentKeyDown = false;
 
-    if (kevent->spontaneous() && !kevent->isAutoRepeat())
+    if (!kevent->isAutoRepeat())
     {
       InputKeyboard::Get().keyPress(keyName, keystatus);
       return true;

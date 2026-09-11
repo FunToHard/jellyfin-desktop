@@ -183,7 +183,10 @@ void InputComponent::remapInput(const QString &source, const QString &keycode, I
       m_currentLongPressAction.clear();
 
       qDebug() << "Emit input action (" + type + "):" << action;
-      emit hostInput(QStringList{action});
+      if (action.startsWith("host:"))
+        handleAction(action);
+      else
+        emit hostInput(QStringList{action});
     }
 
     return;
@@ -230,15 +233,31 @@ void InputComponent::remapInput(const QString &source, const QString &keycode, I
 
   if (!queuedActions.isEmpty())
   {
-    if (SystemComponent::Get().isWebClientConnected())
+    QStringList webActions;
+    for (const QString& act : queuedActions)
     {
-      qDebug() << "Emit input action:" << queuedActions;
-      emit hostInput(queuedActions);
+      if (act.startsWith("host:"))
+      {
+        handleAction(act);
+      }
+      else
+      {
+        webActions.append(act);
+      }
     }
-    else
+
+    if (!webActions.isEmpty())
     {
-      qDebug() << "Web Client has not connected, handling input in host instead.";
-      executeActions(queuedActions);
+      if (SystemComponent::Get().isWebClientConnected())
+      {
+        qDebug() << "Emit input action:" << webActions;
+        emit hostInput(webActions);
+      }
+      else
+      {
+        qDebug() << "Web Client has not connected, handling input in host instead.";
+        executeActions(webActions);
+      }
     }
   }
 }
