@@ -36,6 +36,7 @@ WindowManager::WindowManager(QObject* parent)
     m_ignoreFullscreenSettingsChange(0),
     m_cursorVisible(true),
     m_cursorInsideWindow(true),
+    m_isFullScreen(false),
     m_previousVisibility(QWindow::Windowed),
     m_geometrySaveTimer(nullptr),
     m_initialSize(),
@@ -327,7 +328,8 @@ void WindowManager::onVisibilityChanged(QWindow::Visibility visibility)
            << "m_previousVisibility=" << m_previousVisibility;
 
   bool isFS = (visibility == QWindow::FullScreen);
-  bool wasFS = (m_previousVisibility == QWindow::FullScreen);
+  bool wasFS = m_isFullScreen;
+  m_isFullScreen = isFS;
 
   // Kiosk mode: force back to fullscreen if user tried to exit
   if (!isFS)
@@ -902,7 +904,10 @@ void WindowManager::updateDebugInfo()
 {
   QString debugInfo = m_systemDebugInfo;
   debugInfo += DisplayComponent::Get().debugInformation();
-  debugInfo += m_openglInfo;
+  {
+    QMutexLocker locker(&m_debugInfoMutex);
+    debugInfo += m_openglInfo;
+  }
 
   QString infoString;
   QDebug info(&infoString);
@@ -932,19 +937,24 @@ void WindowManager::onShowDebugLayerChanged() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void WindowManager::updateOpenGLInfo() {
-  m_openglInfo = "";
+  QString openglInfo;
   QOpenGLContext* glctx = QOpenGLContext::currentContext();
   if (glctx && glctx->isValid())
   {
-    m_openglInfo += "\nOpenGL:\n";
+    openglInfo += "\nOpenGL:\n";
     GLenum syms[4] = {GL_VENDOR, GL_RENDERER, GL_VERSION, GL_SHADING_LANGUAGE_VERSION};
     for (auto sym : syms)
     {
       auto s = glctx->functions()->glGetString(sym);
       if (s)
-        m_openglInfo += QString("  ") + QString::fromUtf8(s) + "\n";
+        openglInfo += QString("  ") + QString::fromUtf8(s) + "\n";
     }
-    m_openglInfo += "\n";
+    openglInfo += "\n";
+  }
+
+  {
+    QMutexLocker locker(&m_debugInfoMutex);
+    m_openglInfo = openglInfo;
   }
 }
 

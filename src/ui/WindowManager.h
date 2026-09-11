@@ -8,6 +8,7 @@
 #include <QScreen>
 #include <QTimer>
 #include <QWindow>
+#include <QMutex>
 #include "core/ComponentManager.h"
 
 #define WEBUI_MAX_HEIGHT 1440.0
@@ -113,6 +114,7 @@ private:
   bool m_cursorInsideWindow;
 
   // Window state
+  bool m_isFullScreen;
   QWindow::Visibility m_previousVisibility;  // State before fullscreen
   QRect m_windowedGeometry;                  // Geometry when in Windowed state
   QTimer* m_geometrySaveTimer;               // Debounced disk sync
@@ -124,6 +126,7 @@ private:
   // debug info
   QString m_systemDebugInfo;
   QString m_openglInfo;
+  QMutex m_debugInfoMutex;
   QTimer* m_infoTimer;
 };
 
