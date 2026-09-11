@@ -345,6 +345,10 @@ window.NativeShell.AppHost = {
 async function showSettingsModal() {
     await initCompleted;
 
+    if (document.querySelector(".dialogContainer")) {
+        return;
+    }
+
     const tooltipCSS = `
         .tooltip {
             position: relative;
@@ -375,16 +379,20 @@ async function showSettingsModal() {
             visibility: visible;
         }`;
 
-    var style = document.createElement('style')
-    style.innerText = tooltipCSS
-    document.head.appendChild(style)
+    if (!document.getElementById("jmp-settings-style")) {
+        var style = document.createElement('style');
+        style.id = "jmp-settings-style";
+        style.innerText = tooltipCSS;
+        document.head.appendChild(style);
+    }
 
     const modalContainer = document.createElement("div");
     modalContainer.className = "dialogContainer";
     modalContainer.style.backgroundColor = "rgba(0,0,0,0.5)";
+    let cleanupModal = null;
     modalContainer.addEventListener("click", e => {
-        if (e.target == modalContainer) {
-            modalContainer.remove();
+        if (e.target == modalContainer && cleanupModal) {
+            cleanupModal();
         }
     });
     document.body.appendChild(modalContainer);
@@ -528,6 +536,26 @@ async function showSettingsModal() {
     jmpInfo.settingsDescriptionsUpdate.push(onSectionUpdate);
     jmpInfo.settingsUpdate.push(onSectionUpdate);
 
+    cleanupModal = () => {
+        const descIdx = jmpInfo.settingsDescriptionsUpdate.indexOf(onSectionUpdate);
+        if (descIdx !== -1) {
+            jmpInfo.settingsDescriptionsUpdate.splice(descIdx, 1);
+        }
+        const updateIdx = jmpInfo.settingsUpdate.indexOf(onSectionUpdate);
+        if (updateIdx !== -1) {
+            jmpInfo.settingsUpdate.splice(updateIdx, 1);
+        }
+        document.removeEventListener("keydown", onKeyDown);
+        modalContainer.remove();
+    };
+
+    const onKeyDown = (e) => {
+        if (e.key === "Escape") {
+            cleanupModal();
+        }
+    };
+    document.addEventListener("keydown", onKeyDown);
+
     if (jmpInfo.settings.main.userWebClient) {
         const group = document.createElement("fieldset");
         group.className = "editItemMetadataForm editMetadataForm dialog-content-centered";
@@ -568,7 +596,7 @@ async function showSettingsModal() {
     close.className = "raised button-cancel block btnCancel formDialogFooterItem emby-button";
     close.textContent = "Close"
     close.addEventListener("click", () => {
-        modalContainer.remove();
+        cleanupModal();
     });
     closeContainer.appendChild(close);
 }
