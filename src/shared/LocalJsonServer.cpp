@@ -33,11 +33,14 @@ LocalJsonServer::~LocalJsonServer()
 /////////////////////////////////////////////////////////////////////////////////////////
 bool LocalJsonServer::listen()
 {
+  int attempts = 0;
   while (!m_server->listen(m_serverName))
   {
-    if (m_server->serverError() == QAbstractSocket::AddressInUseError)
+    if (m_server->serverError() == QAbstractSocket::AddressInUseError && attempts < 2)
     {
-      QFile(m_serverName).remove();
+      attempts++;
+      QLocalServer::removeServer(m_serverName);
+      QFile::remove(m_serverName);
       continue;
     }
 
