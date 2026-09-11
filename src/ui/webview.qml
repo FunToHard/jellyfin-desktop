@@ -239,7 +239,7 @@ Window
     settings.playbackRequiresUserGesture: false
     profile.httpUserAgent: components.system.getUserAgent()
     profile.httpCacheType: WebEngineProfile.DiskHttpCache
-    url: mainWindow.webUrl
+    property bool scriptsInitialized: false
     focus: true
     property string currentHoveredUrl: ""
     onLinkHovered: function(hoveredUrl)
@@ -249,6 +249,15 @@ Window
     profile.persistentCookiesPolicy: WebEngineProfile.AllowPersistentCookies
     profile.offTheRecord: false
     profile.storageName: "JellyfinDesktopStorage"
+
+    Connections {
+      target: mainWindow
+      function onWebUrlChanged() {
+        if (web.scriptsInitialized && mainWindow.webUrl) {
+          web.url = mainWindow.webUrl;
+        }
+      }
+    }
 
     Component.onCompleted:
     {
@@ -272,6 +281,10 @@ Window
       }
 
       web.profile.userScripts.collection = [ nativeshell ];
+      scriptsInitialized = true;
+      if (mainWindow.webUrl) {
+        web.url = mainWindow.webUrl;
+      }
     }
 
     onLoadingChanged: function(loadingInfo)
