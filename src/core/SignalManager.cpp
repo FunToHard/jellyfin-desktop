@@ -7,10 +7,10 @@
 #include "SignalManager.h"
 #include "settings/SettingsComponent.h"
 
-int SignalManager::g_sigtermFd[2];
+int SignalManager::g_sigtermFd[2] = { -1, -1 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-SignalManager::SignalManager(QGuiApplication* app) : QObject(nullptr), m_app(app)
+SignalManager::SignalManager(QGuiApplication* app) : QObject(nullptr), m_snTerm(nullptr), m_app(app)
 {
   if (setupHandlers())
   {
@@ -22,10 +22,34 @@ SignalManager::SignalManager(QGuiApplication* app) : QObject(nullptr), m_app(app
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, SignalManager::g_sigtermFd))
   {
     qCritical() << "Couldn't create TERM socketpair";
+    SignalManager::g_sigtermFd[0] = -1;
+    SignalManager::g_sigtermFd[1] = -1;
+  }
+  else
+  {
+    m_snTerm = new QSocketNotifier(SignalManager::g_sigtermFd[1], QSocketNotifier::Read, this);
+    connect(m_snTerm, &QSocketNotifier::activated, this, &SignalManager::handleSignal);
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+SignalManager::~SignalManager()
+{
+  if (m_snTerm)
+  {
+    m_snTerm->setEnabled(false);
   }
 
-  m_snTerm = new QSocketNotifier(SignalManager::g_sigtermFd[1], QSocketNotifier::Read, this);
-  connect(m_snTerm, SIGNAL(activated(int)), this, SLOT(handleSignal()));
+  if (g_sigtermFd[0] >= 0)
+  {
+    close(g_sigtermFd[0]);
+    g_sigtermFd[0] = -1;
+  }
+  if (g_sigtermFd[1] >= 0)
+  {
+    close(g_sigtermFd[1]);
+    g_sigtermFd[1] = -1;
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
