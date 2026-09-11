@@ -32,6 +32,7 @@ DisplayComponent::DisplayComponent(QObject* parent) : ComponentBase(parent), m_i
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 DisplayComponent::~DisplayComponent()
 {
+  restorePreviousVideoMode();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -450,4 +451,11 @@ void DisplayComponent::componentPostInitialize()
   if (m_displayManager)
     InputComponent::Get().registerHostCommand("recreateRpiUI", m_displayManager, "resetRendering");
 #endif
+
+  if (qApp)
+  {
+    connect(qApp, &QGuiApplication::aboutToQuit, this, [this]() {
+      restorePreviousVideoMode();
+    });
+  }
 }
