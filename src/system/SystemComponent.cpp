@@ -677,15 +677,17 @@ void SystemComponent::checkForUpdates()
 #ifndef DISABLE_UPDATE_CHECK
   if (SettingsComponent::Get().value(SETTINGS_SECTION_MAIN, "checkForUpdates").toBool()) {
 #if !defined(Q_OS_WIN) && !defined(Q_OS_MAC)
-    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
     QString checkUrl = "https://github.com/jellyfin/jellyfin-desktop/releases/latest";
     QUrl qCheckUrl = QUrl(checkUrl);
     qDebug() << QString("Checking URL for updates: %1").arg(checkUrl);
     QNetworkRequest req(qCheckUrl);
     req.setHeader(QNetworkRequest::UserAgentHeader, getUserAgent());
 
-    connect(manager, &QNetworkAccessManager::finished, this, &SystemComponent::updateInfoHandler);
-    manager->get(req);
+    QNetworkReply* reply = m_networkManager->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+      updateInfoHandler(reply);
+      reply->deleteLater();
+    });
 #else
     emit updateInfoEmitted("SSL_UNAVAILABLE");
 #endif
