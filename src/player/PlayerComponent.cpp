@@ -1002,7 +1002,7 @@ void PlayerComponent::reselectStream(const QVariant &streamSelection, MediaType 
   // Handle integer Jellyfin stream index (new format)
   if (!isStringFormat && streamSelection.canConvert<int>()) {
     int index = streamSelection.toInt();
-    if (index < 0) {
+    if (index <= 0) {
       m_mpv->setProperty(streamIdPropertyName, "no");
     } else {
       // Jellyfin stream index is the MPV track ID (already 1-based)
@@ -1031,10 +1031,17 @@ void PlayerComponent::reselectStream(const QVariant &streamSelection, MediaType 
       streamName = streamSelectionStr.mid(splitPos + 1);
     }
   }
-  else if (streamSelectionStr.isEmpty() || !streamSelection.isValid())
+  else if (streamSelectionStr.isEmpty() || !streamSelection.isValid() ||
+           streamSelectionStr == "no" || streamSelectionStr == "none" ||
+           streamSelectionStr == "false" || streamSelectionStr == "-1")
   {
     m_mpv->setProperty( streamIdPropertyName, "no");
     return;
+  }
+
+  if (streamID == "0")
+  {
+    streamID = "no";
   }
 
   if (!streamName.isEmpty())
@@ -1042,7 +1049,7 @@ void PlayerComponent::reselectStream(const QVariant &streamSelection, MediaType 
     auto streams = findStreamsForURL(streamName);
     if (streams.isEmpty())
     {
-      QStringList args = (QStringList() << streamAddCommandName << streamName);
+      QStringList args = (QStringList() << streamAddCommandName << streamName << "select");
       m_mpv->command( args);
     }
   }
@@ -1072,7 +1079,10 @@ void PlayerComponent::reselectStream(const QVariant &streamSelection, MediaType 
   if ((target == MediaType::Audio || !streamID.isEmpty()) && selection == "no")
     selection = "1";
 
-  m_mpv->setProperty( streamIdPropertyName, selection);
+  if (selection != "no" || streamName.isEmpty())
+  {
+    m_mpv->setProperty( streamIdPropertyName, selection);
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1414,10 +1424,19 @@ void PlayerComponent::setSubtitleConfiguration()
 
   QString backgroundColor = SettingsComponent::Get().value(SETTINGS_SECTION_SUBTITLES, "background_color").toString();
   QString backgroundTransparency = SettingsComponent::Get().value(SETTINGS_SECTION_SUBTITLES, "background_transparency").toString();
-  if (!backgroundColor.isEmpty() && !backgroundTransparency.isEmpty())
+  if (!backgroundColor.isEmpty())
   {
-    // Color is #RRGGBB or #AARRGGBB, insert Alpha after # (at position 1)
-    backgroundColor.insert(1, backgroundTransparency);
+    if (!backgroundTransparency.isEmpty() && backgroundColor.startsWith("#"))
+    {
+      if (backgroundColor.length() == 7)
+      {
+        backgroundColor.insert(1, backgroundTransparency);
+      }
+      else if (backgroundColor.length() == 9)
+      {
+        backgroundColor.replace(1, 2, backgroundTransparency);
+      }
+    }
     m_mpv->setProperty( "sub-back-color", backgroundColor);
   }
 
