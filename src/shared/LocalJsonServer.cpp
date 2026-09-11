@@ -20,6 +20,13 @@ LocalJsonServer::LocalJsonServer(const QString& serverName, QObject* parent) : Q
 LocalJsonServer::~LocalJsonServer()
 {
   m_server->close();
+  for (QLocalSocket* socket : m_clientSockets)
+  {
+    socket->disconnect(this);
+    socket->close();
+    delete socket;
+  }
+  m_clientSockets.clear();
   QLocalServer::removeServer(m_serverName);
 }
 
@@ -50,6 +57,10 @@ void LocalJsonServer::serverClientConnected()
   {
     m_clientSockets << socket;
     connect(socket, &QLocalSocket::readyRead, this, &LocalJsonServer::clientReadyRead);
+    connect(socket, &QLocalSocket::disconnected, this, [this, socket]() {
+      m_clientSockets.removeAll(socket);
+      socket->deleteLater();
+    });
     emit clientConnected(socket);
   }
 }
@@ -75,7 +86,7 @@ bool LocalJsonServer::sendMessage(const QVariantMap& message, QLocalSocket* sock
 /////////////////////////////////////////////////////////////////////////////////////////
 void LocalJsonServer::clientReadyRead()
 {
-  QLocalSocket* socket = dynamic_cast<QLocalSocket*>(sender());
+  QLocalSocket* socket = qobject_cast<QLocalSocket*>(sender());
   if (!socket)
     return;
 
